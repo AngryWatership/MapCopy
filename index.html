@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MapCopy</title>
+  <meta property="og:title" content="MapCopy" />
+  <meta property="og:description" content="A personalised two-key-pair keyboard layout trainer and optimiser." />
+  <meta property="og:url" content="https://angrywatership.github.io/MapCopy" />
+  <meta name="description" content="A personalised two-key-pair keyboard layout trainer." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <span class="logo">MapCopy</span>
+    <nav class="view-nav">
+      <button class="nav-btn active" data-view="training">training</button>
+      <button class="nav-btn" data-view="mature">type</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Output -->
+    <section class="output-section">
+      <div id="output-area">
+        <span id="committed-text"></span><span id="pending-char"></span>
+      </div>
+      <div id="status-line"></div>
+    </section>
+
+    <!-- Keyboard -->
+    <section class="keyboard-section">
+      <div id="keyboard-training" class="kb-view active"></div>
+      <div id="keyboard-mature"   class="kb-view"></div>
+    </section>
+
+    <!-- Controls -->
+    <section class="controls-section">
+      <button class="ctrl-key" id="btn-space">space</button>
+      <button class="ctrl-key" id="btn-back">⌫</button>
+      <button class="ctrl-key ghost" id="btn-clear">clear</button>
+    </section>
+
+    <!-- Matrix (collapsible) -->
+    <details class="matrix-panel">
+      <summary>12 × 12 matrix</summary>
+      <div id="matrix-body"></div>
+    </details>
+  </main>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

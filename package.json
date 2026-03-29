@@ -1,0 +1,24 @@
+{
+  "name": "mapcopy",
+  "version": "0.1.0",
+  "description": "A personalised two-key-pair keyboard layout trainer and optimiser.",
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "verify-layout": "python3 docs/mapcopy_layout.py"
+  },
+  "jest": {
+    "extensionsToTreatAsEsm": [".js"],
+    "testEnvironment": "node",
+    "transform": {}
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AngryWatership/MapCopy.git"
+  },
+  "homepage": "https://angrywatership.github.io/MapCopy",
+  "license": "MIT"
+}
