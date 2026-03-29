@@ -58,8 +58,8 @@ describe('KeyEngine — formula', () => {
     ['i', 'u', 'l'],
     ['j', 'l', 'c'],
     ['o', 'p', 'r'],
-    ['j', 'n', 'A'],
-    ['j', 'u', 'A'],
+    ['j', 'n', '^S']  // row+1 col+0 = idx 4,
+    ['j', 'u', 'A']   // row+2 col+0 = idx 8,
     ['n', 'j', 'BS'],
     ['n', 'u', 'SP'],
   ];
@@ -152,9 +152,9 @@ describe('KeyEngine — state machine', () => {
   test('previewAll returns 12 entries when pending', () => {
     const map = engine.previewAll('j');
     expect(Object.keys(map).length).toBe(12);
-    expect(map['j'].char).toBe('a');
-    expect(map['l'].char).toBe('c');
-    expect(map['n'].char).toBe('A');
+    expect(map['j'].char).toBe('a'); // idx 0 — same key
+    expect(map['l'].char).toBe('c'); // idx 2 — same row +2
+    expect(map['n'].char).toBe('^S'); // idx 4 — row below
   });
 
   test('reset clears state', () => {
