@@ -12,7 +12,8 @@ import { KeyEngine  } from './engine/KeyEngine.js';
 import { Layout     } from './engine/Layout.js';
 import { Stats      } from './ui/Stats.js';
 import { TypingArea } from './ui/TypingArea.js';
-import { StatsBar   } from './ui/StatsBar.js';
+import { StatsBar      } from './ui/StatsBar.js';
+import { LayoutEditor  } from './ui/LayoutEditor.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const BANDS      = [[8,9,10,11],[0,1,2,3],[4,5,6,7]];
@@ -33,6 +34,7 @@ let wordList    = [];
 let typingArea  = null;
 let statsBar    = null;
 let regularMode = false;   // true → textarea native, false → MapCopy engine
+let layoutEditor = null;
 let testMode    = true;    // true → word prompt, false → open writing
 let testActive  = false;
 let currentView = 'training';
@@ -53,6 +55,8 @@ const $testSec   = document.getElementById('test-section');
 const $resultSec = document.getElementById('results-section');
 const $prompt    = document.getElementById('typing-area');
 const $btnRestart= document.getElementById('btn-restart');
+const $editorSec = document.getElementById('editor-section');
+const $btnEdit   = document.getElementById('btn-edit-layout');
 const $btnAgain  = document.getElementById('btn-again');
 
 // ── Textarea helpers ───────────────────────────────────────────────────────
@@ -237,6 +241,30 @@ async function init() {
     time: document.getElementById('stat-time'),
   }, stats);
 
+  // Layout editor
+  layoutEditor = new LayoutEditor(
+    document.getElementById('layout-editor'),
+    layoutData,
+    (newLayout) => {
+      engine.loadLayout(newLayout);
+      layoutData = newLayout;
+      // Rebuild keyboards with new layout
+      $kbTrain.innerHTML  = '';
+      $kbMature.innerHTML = '';
+      buildKb($kbTrain,  true);
+      buildKb($kbMature, false);
+      renderKb();
+    }
+  );
+  layoutEditor.render();
+
+  // If user has a saved custom layout, use it
+  const saved = layoutEditor.layout;
+  if (JSON.stringify(saved) !== JSON.stringify(layoutData)) {
+    engine.loadLayout(saved);
+    layoutData = saved;
+  }
+
   startTest();
 }
 
@@ -340,6 +368,13 @@ $btnTest.addEventListener('click', () => {
   $btnTest.classList.toggle('active', testMode);
   $btnTest.textContent = testMode ? 'open' : 'test';
   startTest();
+});
+
+$btnEdit.addEventListener('click', () => {
+  const open = $editorSec.classList.toggle('hidden');
+  $btnEdit.classList.toggle('active', !open);
+  $btnEdit.textContent = open ? 'edit layout' : 'close editor';
+  if (!open) layoutEditor.render();  // re-render on open in case layout changed externally
 });
 
 $btnRestart.addEventListener('click', startTest);

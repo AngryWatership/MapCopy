@@ -390,3 +390,109 @@ main {
 }
 .pending-indicator:not(:empty)::before { content: '[ '; }
 .pending-indicator:not(:empty)::after  { content: ' ]'; }
+
+/* ── Phase 3 — layout editor ─────────────────────────────────────────────── */
+
+.editor-section { padding: 1rem 0; }
+
+.le-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.le-btn {
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: var(--mono);
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.le-btn:hover { color: var(--fg); border-color: var(--fg); }
+
+.le-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+.le-key-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.le-key-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+.le-band {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.le-band:last-child { border-bottom: none; }
+
+.le-band-label {
+  font-size: 9px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  letter-spacing: .04em;
+}
+
+.le-cells {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+
+.le-cell {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 3px 2px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .1s, background .1s;
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.le-cell:hover { border-color: var(--accent); background: var(--surface); }
+.le-cell-editing { border-color: var(--accent); background: var(--surface); padding: 0; }
+
+.le-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  text-align: center;
+  padding: 3px 2px;
+}
+.le-input-error { color: #e05c5c; }
+
+.le-error {
+  font-size: 12px;
+  color: #e05c5c;
+  font-family: var(--mono);
+  margin-top: 8px;
+}
