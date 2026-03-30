@@ -78,6 +78,7 @@ async function init() {
     time: document.getElementById('stat-time'),
   }, stats);
 
+  startTest();
   render();
 }
 
@@ -88,21 +89,10 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     currentView = view;
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-
-    // keyboard view
+    // Only switch keyboard display — everything else stays visible
     document.getElementById('keyboard-training').classList.toggle('active', view === 'training');
     document.getElementById('keyboard-mature').classList.toggle('active', view === 'type');
-
-    // test section
-    $testSection.classList.toggle('hidden', view !== 'type');
-    $resultsSection.classList.add('hidden');
-
-    if (view === 'type' && !testActive) startTest();
-    if (view === 'training') {
-      stopTest();
-      engine.reset();
-      render();
-    }
+    render();
   });
 });
 
@@ -114,7 +104,6 @@ function startTest() {
   typingArea.start();
   statsBar.start();
   $resultsSection.classList.add('hidden');
-  $testSection.classList.remove('hidden');
   engine.reset();
   render();
 }
@@ -171,7 +160,7 @@ function handlePress(trigger) {
   flashBtn(trigger);
   const evt = engine.press(trigger);
 
-  if (currentView === 'type' && testActive && evt.type === 'commit') {
+  if (testActive && evt.type === 'commit') {
     typingArea.commit(evt.char);
   }
 
@@ -186,7 +175,7 @@ function handlePress(trigger) {
 function handleSpace() {
   flashCtrl($btnSpace);
   const evt = engine.space();
-  if (currentView === 'type' && testActive && evt.type === 'commit') {
+  if (testActive && evt.type === 'commit') {
     typingArea.commit(evt.char);
   }
   if (evt.type === 'commit')    $status.textContent = `space → '${evt.char}'`;
@@ -197,7 +186,7 @@ function handleSpace() {
 function handleBackspace() {
   flashCtrl($btnBack);
   const evt = engine.backspace();
-  if (currentView === 'type' && testActive && evt.type === 'delete') {
+  if (testActive && evt.type === 'delete') {
     typingArea.stepBack();
   }
   if (evt.type === 'cancel') $status.textContent = `cancelled [${evt.trigger}]`;
