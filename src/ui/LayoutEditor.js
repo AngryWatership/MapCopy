@@ -27,7 +27,11 @@ export class LayoutEditor {
     this._onChange = onChange;
     this._editing   = null;  // { keyIdx, charIdx }
     this._rendering = false;  // mutex — blocks blur commits during re-render
-    this._editId    = 0;        // increments each startEdit — stale blurs check this
+    this._editId    = 0;
+    // Single click anywhere cancels open edit — bound once, persists across renders
+    this._el.addEventListener('click', (e) => {
+      if (this._editing && e.target.tagName !== 'INPUT') this._cancelEdit();
+    });
   }
 
   // ── Public API ─────────────────────────────────────────────────────────
@@ -50,6 +54,10 @@ export class LayoutEditor {
   _buildToolbar() {
     const bar = document.createElement('div');
     bar.className = 'le-toolbar';
+    const hint = document.createElement('span');
+    hint.className   = 'le-hint';
+    hint.textContent = 'double-click a cell to edit · click anywhere to cancel';
+    bar.appendChild(hint);
 
     const resetBtn = this._btn('reset to default', () => {
       if (!confirm('Reset layout to canonical default? This cannot be undone.')) return;
@@ -142,7 +150,7 @@ export class LayoutEditor {
           cell.dataset.ci  = ci;
           cell.title       = `key [${key.t}] slot ${ci}`;
 
-          cell.addEventListener('click', () => this._startEdit(cell, ki, ci));
+          cell.addEventListener('dblclick', () => this._startEdit(cell, ki, ci));
           cells.appendChild(cell);
         });
         bandEl.appendChild(cells);
@@ -199,11 +207,7 @@ export class LayoutEditor {
       e.stopPropagation();
     });
 
-    input.addEventListener('blur', () => {
-      // Only commit if this is still the active edit session
-      if (this._rendering || this._editId !== myId) return;
-      commit();
-    });
+    // No blur handler — cancel/commit is driven by explicit user action only
   }
 
   _cancelEdit() {

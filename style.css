@@ -496,3 +496,11 @@ main {
   font-family: var(--mono);
   margin-top: 8px;
 }
+
+.le-hint {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+  margin-right: auto;
+  align-self: center;
+}
