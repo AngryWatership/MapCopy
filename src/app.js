@@ -22,8 +22,9 @@ let   layoutData = null;
 let   wordList   = [];
 let   typingArea = null;
 let   statsBar   = null;
-let   currentView = 'training';   // 'training' | 'type'
-let   testActive  = false;
+let   currentView  = 'training';   // 'training' | 'type'
+let   testActive   = false;
+let   regularMode  = false;            // true = bypass engine, type directly
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
 const $committed    = document.getElementById('committed-text');
@@ -302,11 +303,39 @@ $btnSpace.addEventListener('click', handleSpace);
 $btnBack.addEventListener('click',  handleBackspace);
 $btnClear.addEventListener('click', handleClear);
 
+const $btnRegular = document.getElementById('btn-regular');
+$btnRegular.addEventListener('click', () => {
+  regularMode = !regularMode;
+  $btnRegular.classList.toggle('active', regularMode);
+  $btnRegular.textContent = regularMode ? 'mapcopy' : 'regular';
+  engine.reset();
+  render();
+});
+
 document.querySelector('.matrix-panel').addEventListener('toggle', e => {
   if (e.target.open) buildMatrix();
 });
 
 document.addEventListener('keydown', e => {
+  // Regular keyboard mode — bypass engine, type directly
+  if (regularMode) {
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      if (testActive) typingArea.stepBack();
+      else { const t = $committed.textContent; $committed.textContent = t.slice(0,-1); }
+      return;
+    }
+    if (e.key === 'Escape') { handleClear(); return; }
+    if (e.key.length === 1 || e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      const char = e.key === 'Enter' ? 'ENT' : e.key === 'Tab' ? 'TAB' : e.key;
+      if (testActive) typingArea.commit(char);
+      else $committed.textContent += e.key === 'Enter' ? '' : e.key;
+      render();
+    }
+    return;
+  }
+  // MapCopy mode
   if (e.key === ' ')         { e.preventDefault(); handleSpace();     return; }
   if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(); return; }
   if (e.key === 'Escape')    { handleClear(); return; }

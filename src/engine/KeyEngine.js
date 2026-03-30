@@ -147,7 +147,20 @@ export class KeyEngine {
 
   get pending()   { return this._pending; }
   get committed() { return [...this._committed]; }
-  get text()      { return this._committed.join(''); }
+
+  // Render tokens as their display equivalents for the output area
+  get text() {
+    const DISPLAY = {
+      'SP': ' ', 'TAB': '\t', 'ENT': '\n',
+      'BS': '', 'DEL': '', 'ESC': '',
+      'HOME': '', 'END': '', 'INS': '',
+      'PGUP': '', 'PGDN': '',
+      '←': '', '→': '', '↑': '', '↓': '',
+    };
+    return this._committed
+      .map(c => DISPLAY.hasOwnProperty(c) ? DISPLAY[c] : c)
+      .join('');
+  }
 
   reset() {
     this._pending   = null;

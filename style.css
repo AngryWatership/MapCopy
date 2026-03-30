@@ -265,6 +265,7 @@ main {
 /* ── Phase 2 — typing test ───────────────────────────────────────────────── */
 
 .hidden { display: none !important; }
+.ctrl-key.active { border-color: var(--accent); color: var(--accent); }
 
 /* Stats bar */
 .stats-bar {
