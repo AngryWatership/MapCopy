@@ -4,26 +4,28 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MapCopy</title>
+  <meta name="description" content="A personalised two-key-pair keyboard layout trainer." />
   <meta property="og:title" content="MapCopy" />
   <meta property="og:description" content="A personalised two-key-pair keyboard layout trainer and optimiser." />
   <meta property="og:url" content="https://angrywatership.github.io/MapCopy" />
-  <meta name="description" content="A personalised two-key-pair keyboard layout trainer." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
   <header class="site-header">
     <span class="logo">MapCopy</span>
     <nav class="view-nav">
       <button class="nav-btn active" data-view="training">training</button>
-      <button class="nav-btn" data-view="mature">type</button>
+      <button class="nav-btn" data-view="type">type</button>
     </nav>
   </header>
 
   <main>
-    <!-- Output -->
+
+    <!-- ── OUTPUT ───────────────────────────────────────────────── -->
     <section class="output-section">
       <div id="output-area">
         <span id="committed-text"></span><span id="pending-char"></span>
@@ -31,24 +33,48 @@
       <div id="status-line"></div>
     </section>
 
-    <!-- Keyboard -->
+    <!-- ── TYPING TEST (hidden until type view) ──────────────────── -->
+    <section class="test-section hidden" id="test-section">
+      <div class="stats-bar">
+        <div class="stat"><span class="stat-label">wpm</span><span class="stat-val" id="stat-wpm">0</span></div>
+        <div class="stat"><span class="stat-label">acc</span><span class="stat-val" id="stat-acc">100%</span></div>
+        <div class="stat"><span class="stat-label">time</span><span class="stat-val" id="stat-time">0s</span></div>
+        <button class="restart-btn" id="btn-restart">restart</button>
+      </div>
+      <div id="typing-area" class="typing-area"></div>
+    </section>
+
+    <!-- ── RESULTS (hidden until test complete) ───────────────────── -->
+    <section class="results-section hidden" id="results-section">
+      <h2 class="results-title">complete</h2>
+      <div class="results-grid">
+        <div class="result-card"><div class="rc-label">wpm</div><div class="rc-val" id="res-wpm">—</div></div>
+        <div class="result-card"><div class="rc-label">accuracy</div><div class="rc-val" id="res-acc">—</div></div>
+        <div class="result-card"><div class="rc-label">chars</div><div class="rc-val" id="res-chars">—</div></div>
+        <div class="result-card"><div class="rc-label">time</div><div class="rc-val" id="res-time">—</div></div>
+      </div>
+      <button class="again-btn" id="btn-again">again</button>
+    </section>
+
+    <!-- ── KEYBOARD ──────────────────────────────────────────────── -->
     <section class="keyboard-section">
       <div id="keyboard-training" class="kb-view active"></div>
       <div id="keyboard-mature"   class="kb-view"></div>
     </section>
 
-    <!-- Controls -->
+    <!-- ── CONTROLS ──────────────────────────────────────────────── -->
     <section class="controls-section">
       <button class="ctrl-key" id="btn-space">space</button>
       <button class="ctrl-key" id="btn-back">⌫</button>
       <button class="ctrl-key ghost" id="btn-clear">clear</button>
     </section>
 
-    <!-- Matrix (collapsible) -->
+    <!-- ── MATRIX ────────────────────────────────────────────────── -->
     <details class="matrix-panel">
       <summary>12 × 12 matrix</summary>
       <div id="matrix-body"></div>
     </details>
+
   </main>
 
   <script type="module" src="src/app.js"></script>

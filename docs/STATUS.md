@@ -6,61 +6,55 @@
 
 ## Current State
 
-**Phase: Implementation started — core files built, ready to commit**
-**Repo: https://github.com/AngryWatership/MapCopy**
+**Phase: v0.0.2 — Phase 2 built, ready to deploy**
+**Repo:  https://github.com/AngryWatership/MapCopy**
+**Tag:   v0.0.1**
 **Local: /mnt/c/Users/PC MAROC/projects/MapCopy (WSL)**
-**Live: https://angrywatership.github.io/MapCopy (after first deploy)**
+**Live:  https://angrywatership.github.io/MapCopy**
 
 ---
 
 ## What Is Done
 
-- [x] Algorithm fully specified and verified (see [LOGIC.md](LOGIC.md))
-- [x] Zero-duplicate 144-char layout generated (`docs/mapcopy_layout.py` + `docs/layout.json`)
+- [x] Algorithm specified, sign bug corrected, formula verified
+- [x] 144-slot zero-duplicate layout — all printable ASCII + specials + F-keys + shortcuts
+- [x] `docs/mapcopy_layout.py` + `docs/layout.json` — canonical source + generated output
 - [x] `src/engine/KeyEngine.js` — pure state machine, no DOM
-- [x] `src/engine/Layout.js` — loader + validator
-- [x] `src/app.js` — bootstrap, DOM wiring, both views
-- [x] `index.html` + `style.css` — shell + dark utilitarian theme
-- [x] `tests/KeyEngine.test.js` — full 144-pair matrix verification + state machine tests
-- [x] `.github/workflows/deploy.yml` — test then deploy to GitHub Pages on push to main
-- [x] `package.json` — Jest only, no bundler
-- [x] All seven `docs/` files current
+- [x] `src/engine/Layout.js` — loader + duplicate validator
+- [x] `src/app.js` — bootstrap, training view, mature view, physical keyboard wiring
+- [x] `index.html` + `style.css` — shell
+- [x] `tests/KeyEngine.test.js` — 167/167 passing
+- [x] `.github/workflows/deploy.yml` — test → deploy pipeline
+- [x] `mapcopy_git.sh` — zip deploy script, filename-based lookup table
+- [x] All seven `docs/` md files current
+- [x] Site live at https://angrywatership.github.io/MapCopy
+- [x] v0.0.1 tagged and pushed
 
 ---
 
 ## What Is Not Done
 
-- [ ] Files not yet committed to repo
-- [ ] GitHub Pages not yet enabled in repo settings
-- [ ] `Stats.js` — WPM / accuracy (Phase 2)
-- [ ] `TypingArea.js` — typing test mode (Phase 2)
-- [ ] Word list (Phase 2)
-- [ ] `ö` trigger — remap decision for non-Nordic keyboards still open
+- [x] `words/en-200.json` — 200-word list
+- [x] `src/ui/TypingArea.js` — char-level diff renderer
+- [x] `src/ui/Stats.js` — WPM (rolling window) + accuracy
+- [x] `src/ui/StatsBar.js` — live HUD
+- [x] Results screen (WPM, accuracy, chars, time)
+- [x] `index.html` + `app.js` + `style.css` updated for Phase 2
+- [ ] `ö` trigger — remap for non-Nordic keyboards (open question)
 
 ---
 
-## Next Step — Action Required From You
+## Next Step
 
-**Commit the files and enable GitHub Pages.**
+**Deploy Phase 2, then tag v0.0.2.**
 
+Run `mapcopy_git.sh`, then:
 ```bash
-# Clone first (one time only)
-git clone https://github.com/AngryWatership/MapCopy.git "/mnt/c/Users/PC MAROC/projects/MapCopy"
 cd "/mnt/c/Users/PC MAROC/projects/MapCopy"
-
-# Copy all project files here, then:
-npm install
-npm test
-git add .
-git commit -m "feat: initial implementation — engine, layout, shell, tests, CI"
 git push origin main
+git tag v0.0.2
+git push origin v0.0.2
 ```
-
-Then in GitHub repo settings:
-- Settings → Pages → Source → **GitHub Actions**
-
-Live URL after first successful deploy:
-`https://angrywatership.github.io/MapCopy`
 
 ---
 
@@ -68,11 +62,11 @@ Live URL after first successful deploy:
 
 | # | Question | Status |
 |---|---|---|
-| 1 | `ö` key — remap to a standard key for non-Nordic keyboards? | Open |
+| 1 | `ö` key — remap for non-Nordic keyboards? | Open |
 | 2 | Cross-row second key — commits first at idx 0, second becomes pending | Confirmed |
-| 3 | Shortcut execution — `^C` fires browser shortcut or outputs string? | Open |
+| 3 | `^C` etc. — fire OS shortcut or output token string? | Open |
 | 4 | Word list language — English only for v1? | Open |
 
 ---
 
-*Last updated: session 1 — implementation*
+*Last updated: session 1 — site live, Phase 2 starting*

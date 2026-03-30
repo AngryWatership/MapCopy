@@ -261,3 +261,112 @@ main {
   .kc { font-size: .55rem; }
   .mkey-preview { font-size: .9rem; }
 }
+
+/* ── Phase 2 — typing test ───────────────────────────────────────────────── */
+
+.hidden { display: none !important; }
+
+/* Stats bar */
+.stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.5rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+.stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.stat-val   { font-size: 22px; font-weight: 700; color: var(--fg); font-family: var(--mono); }
+
+.restart-btn {
+  margin-left: auto;
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--mono);
+  transition: color .15s, border-color .15s;
+}
+.restart-btn:hover { color: var(--fg); border-color: var(--fg); }
+
+/* Typing area */
+.typing-area {
+  font-family: var(--mono);
+  font-size: 20px;
+  line-height: 2;
+  letter-spacing: .02em;
+  padding: 0.5rem 0 1.5rem;
+  flex-wrap: wrap;
+  display: flex;
+  user-select: none;
+}
+.tc-pending { color: var(--muted); }
+.tc-correct { color: var(--fg); }
+.tc-wrong   { color: #e05c5c; }
+.tc-cursor  {
+  color: var(--fg);
+  border-bottom: 2px solid var(--accent);
+  animation: blink .9s step-end infinite;
+}
+@keyframes blink { 50% { border-color: transparent; } }
+
+/* Test section */
+.test-section {
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+}
+
+/* Results */
+.results-section {
+  padding: 2rem 0 1rem;
+  text-align: center;
+}
+.results-title {
+  font-family: var(--display);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  margin: 0 0 1.5rem;
+  color: var(--fg);
+}
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 1.5rem;
+}
+.result-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem 0.5rem;
+}
+.rc-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.rc-val {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--fg);
+}
+.again-btn {
+  padding: 10px 32px;
+  border: 1px solid var(--fg);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 14px;
+  font-family: var(--mono);
+  cursor: pointer;
+  letter-spacing: .05em;
+  transition: background .15s, color .15s;
+}
+.again-btn:hover { background: var(--fg); color: var(--bg); }
