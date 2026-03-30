@@ -25,16 +25,20 @@ export class LayoutEditor {
     this._default  = JSON.parse(JSON.stringify(defaultLayout));  // deep copy
     this._layout   = this._load() || JSON.parse(JSON.stringify(defaultLayout));
     this._onChange = onChange;
-    this._editing  = null;  // { keyIdx, charIdx }
+    this._editing   = null;  // { keyIdx, charIdx }
+    this._rendering = false;  // mutex — blocks blur commits during re-render
   }
 
   // ── Public API ─────────────────────────────────────────────────────────
 
   render() {
+    this._rendering = true;
     this._el.innerHTML = '';
     this._el.appendChild(this._buildToolbar());
     this._el.appendChild(this._buildGrid());
     this._el.appendChild(this._buildErrors());
+    // Release mutex after browser has painted
+    requestAnimationFrame(() => { this._rendering = false; });
   }
 
   /** Return current layout (may differ from canonical). */
@@ -171,7 +175,7 @@ export class LayoutEditor {
     input.focus();
     input.select();
 
-    const commit = () => {
+    const commit = (force = false) => {
       const val = input.value.trim();
       if (!val) { this._cancelEdit(); return; }
       const err = this._validateCell(ki, ci, val);
@@ -181,18 +185,24 @@ export class LayoutEditor {
         return;
       }
       this._layout[ki].chars[ci] = val;
+      this._editing = null;
       this._save();
       this._emit();
-      this._editing = null;
       this.render();
     };
 
     input.addEventListener('keydown', e => {
-      if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+      if (e.key === 'Enter')  { e.preventDefault(); commit(true); }
       if (e.key === 'Escape') { e.preventDefault(); this._cancelEdit(); }
-      e.stopPropagation();  // don't let MapCopy engine see these
+      e.stopPropagation();
     });
-    input.addEventListener('blur', commit);
+
+    input.addEventListener('blur', () => {
+      // Mutex: if a render is in progress (triggered by another cell click),
+      // this blur is a side-effect of that render — skip it entirely.
+      if (this._rendering) return;
+      commit();
+    });
   }
 
   _cancelEdit() {
