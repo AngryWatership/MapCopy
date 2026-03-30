@@ -71,16 +71,24 @@ main {
 }
 
 /* ── Output ────────────────────────────────────────────────────── */
-#output-area {
-  min-height: 56px;
+#output-field {
+  width: 100%;
+  min-height: 80px;
+  max-height: 200px;
+  resize: vertical;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: .75rem 1rem;
-  font-size: 1.4rem;
-  line-height: 1.4;
-  word-break: break-all;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-family: var(--mono);
+  font-size: 18px;
+  color: var(--fg);
+  line-height: 1.6;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s;
 }
+#output-field:focus { border-color: var(--accent); }
 #pending-char {
   color: var(--pending);
   border-bottom: 2px solid var(--pending-dim);
@@ -372,3 +380,13 @@ main {
   transition: background .15s, color .15s;
 }
 .again-btn:hover { background: var(--fg); color: var(--bg); }
+
+/* Pending key indicator */
+.pending-indicator {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  margin-right: 6px;
+}
+.pending-indicator:not(:empty)::before { content: '[ '; }
+.pending-indicator:not(:empty)::after  { content: ' ]'; }

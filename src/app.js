@@ -1,6 +1,5 @@
 /**
  * app.js — MapCopy bootstrap
- * Handles: layout loading, keyboard views, typing test, open writing, special tokens.
  */
 
 import { KeyEngine  } from './engine/KeyEngine.js';
@@ -13,40 +12,43 @@ import { StatsBar   } from './ui/StatsBar.js';
 const BANDS     = [[8,9,10,11],[0,1,2,3],[4,5,6,7]];
 const isSpecial = c => c.length > 1 || ['…','•','×','÷','±','€','£','¥','©'].includes(c);
 
-// Tokens that produce side effects on the output area
-const TOKEN_EFFECTS = {
-  'SP':   (el) => { el.textContent += ' '; },
-  'TAB':  (el) => { el.textContent += '\t'; },
-  'ENT':  (el) => { el.appendChild(document.createElement('br')); },
-  'BS':   (el) => {
-    if (el.lastChild?.nodeName === 'BR') { el.removeChild(el.lastChild); }
-    else if (el.textContent.length > 0) { el.textContent = el.textContent.slice(0,-1); }
-  },
-  'DEL':  (el) => {
-    if (el.lastChild?.nodeName === 'BR') { el.removeChild(el.lastChild); }
-    else if (el.textContent.length > 0) { el.textContent = el.textContent.slice(0,-1); }
-  },
-  'ESC':  (el) => { el.textContent = ''; while(el.firstChild) el.removeChild(el.firstChild); },
+// Map engine tokens → what gets inserted into the textarea
+const TOKEN_INSERT = {
+  'SP':  ' ',
+  'TAB': '\t',
+  'ENT': '\n',
 };
 
-// Tokens that map to a single printable char for the typing prompt
-const TOKEN_TO_CHAR = { 'SP': ' ', 'TAB': '\t', 'ENT': '\n' };
+// Map engine tokens → keyboard key equivalents for dispatchEvent
+const TOKEN_KEY = {
+  'BS':   'Backspace',
+  'DEL':  'Delete',
+  'ESC':  'Escape',
+  'HOME': 'Home',
+  'END':  'End',
+  'PGUP': 'PageUp',
+  'PGDN': 'PageDown',
+  '←':   'ArrowLeft',
+  '→':   'ArrowRight',
+  '↑':   'ArrowUp',
+  '↓':   'ArrowDown',
+};
 
 // ── State ──────────────────────────────────────────────────────────────────
 const engine = new KeyEngine();
 const layout = new Layout();
 const stats  = new Stats();
-let layoutData   = null;
-let wordList     = [];
-let typingArea   = null;
-let statsBar     = null;
-let regularMode  = false;   // bypass engine, type with normal keyboard
-let testMode     = true;    // true = typing test active, false = open writing with WPM
-let testActive   = false;
-let currentView  = 'training';
+let layoutData  = null;
+let wordList    = [];
+let typingArea  = null;
+let statsBar    = null;
+let regularMode = false;
+let testMode    = true;
+let testActive  = false;
+let currentView = 'training';
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
-const $committed      = document.getElementById('committed-text');
+const $field          = document.getElementById('output-field');
 const $pending        = document.getElementById('pending-char');
 const $status         = document.getElementById('status-line');
 const $kbTraining     = document.getElementById('keyboard-training');
@@ -63,32 +65,151 @@ const $typingArea     = document.getElementById('typing-area');
 const $btnRestart     = document.getElementById('btn-restart');
 const $btnAgain       = document.getElementById('btn-again');
 
-// ── Init ───────────────────────────────────────────────────────────────────
-async function init() {
-  const result = await layout.fetch('./docs/layout.json');
-  if (!result.ok) { $status.textContent = 'Layout error: ' + result.errors.join(', '); return; }
-  layoutData = layout.raw;
-  engine.loadLayout(layoutData);
-  buildTraining();
-  buildMature();
+// ── Textarea helpers ───────────────────────────────────────────────────────
 
-  try {
-    const res = await fetch('./words/en-200.json');
-    wordList  = await res.json();
-  } catch { wordList = ['the','be','to','of','and','in','that','have','it','for']; }
+/** Insert a string at the textarea cursor position */
+function fieldInsert(text) {
+  const s = $field.selectionStart;
+  const e = $field.selectionEnd;
+  const v = $field.value;
+  $field.value = v.slice(0, s) + text + v.slice(e);
+  $field.selectionStart = $field.selectionEnd = s + text.length;
+}
 
-  typingArea = new TypingArea($typingArea, wordList, 30);
-  typingArea.onChar = (correct) => stats.commit(correct);
-  typingArea.onComplete = () => endTest();
+/** Delete one character before cursor (backspace) */
+function fieldBackspace() {
+  const s = $field.selectionStart;
+  const e = $field.selectionEnd;
+  if (s !== e) {
+    // Delete selection
+    $field.value = $field.value.slice(0, s) + $field.value.slice(e);
+    $field.selectionStart = $field.selectionEnd = s;
+  } else if (s > 0) {
+    $field.value = $field.value.slice(0, s-1) + $field.value.slice(s);
+    $field.selectionStart = $field.selectionEnd = s - 1;
+  }
+}
 
-  statsBar = new StatsBar({
-    wpm:  document.getElementById('stat-wpm'),
-    acc:  document.getElementById('stat-acc'),
-    time: document.getElementById('stat-time'),
-  }, stats);
+/** Delete one character after cursor (delete) */
+function fieldDelete() {
+  const s = $field.selectionStart;
+  const e = $field.selectionEnd;
+  if (s !== e) {
+    $field.value = $field.value.slice(0, s) + $field.value.slice(e);
+    $field.selectionStart = $field.selectionEnd = s;
+  } else if (s < $field.value.length) {
+    $field.value = $field.value.slice(0, s) + $field.value.slice(s+1);
+    $field.selectionStart = $field.selectionEnd = s;
+  }
+}
 
-  startTest();
-  render();
+/** Fire a native keyboard event on the textarea (for nav keys) */
+function fieldFireKey(key) {
+  $field.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+  // For navigation keys, also manually move cursor since dispatchEvent doesn't always move caret
+  const s = $field.selectionStart;
+  const v = $field.value;
+  const len = v.length;
+  if (key === 'Home')      { $field.selectionStart = $field.selectionEnd = 0; }
+  else if (key === 'End')  { $field.selectionStart = $field.selectionEnd = len; }
+  else if (key === 'ArrowLeft'  && s > 0)   { $field.selectionStart = $field.selectionEnd = s - 1; }
+  else if (key === 'ArrowRight' && s < len) { $field.selectionStart = $field.selectionEnd = s + 1; }
+  else if (key === 'PageUp')   { $field.selectionStart = $field.selectionEnd = 0; }
+  else if (key === 'PageDown') { $field.selectionStart = $field.selectionEnd = len; }
+  else if (key === 'Escape')   { $field.value = ''; }
+  else if (key === 'ArrowUp' || key === 'ArrowDown') {
+    // Move to previous/next line
+    const lines = v.slice(0, s).split('\n');
+    const lineIdx = lines.length - 1;
+    const colIdx  = lines[lineIdx].length;
+    if (key === 'ArrowUp' && lineIdx > 0) {
+      const prevLine = lines[lineIdx - 1];
+      const newCol   = Math.min(colIdx, prevLine.length);
+      const newPos   = lines.slice(0, lineIdx - 1).join('\n').length + (lineIdx > 1 ? 1 : 0) + newCol;
+      $field.selectionStart = $field.selectionEnd = newPos;
+    } else if (key === 'ArrowDown') {
+      const allLines  = v.split('\n');
+      if (lineIdx < allLines.length - 1) {
+        const nextLine = allLines[lineIdx + 1];
+        const newCol   = Math.min(colIdx, nextLine.length);
+        const before   = allLines.slice(0, lineIdx + 1).join('\n').length + 1;
+        $field.selectionStart = $field.selectionEnd = before + newCol;
+      }
+    }
+  }
+}
+
+// ── Dispatch committed char from engine ────────────────────────────────────
+function dispatchChar(char) {
+  // Printable insert
+  if (TOKEN_INSERT[char] !== undefined) {
+    fieldInsert(TOKEN_INSERT[char]);
+    if (testActive && testMode) typingArea.commit(TOKEN_INSERT[char] === ' ' ? ' ' : TOKEN_INSERT[char]);
+    else if (testActive) stats.commit(true);
+    return;
+  }
+  // Nav / edit keys
+  if (TOKEN_KEY[char]) {
+    const key = TOKEN_KEY[char];
+    if (key === 'Backspace') fieldBackspace();
+    else if (key === 'Delete') fieldDelete();
+    else fieldFireKey(key);
+    if (testActive && testMode && key === 'Backspace') typingArea.stepBack();
+    return;
+  }
+  // Regular printable char
+  fieldInsert(char);
+  if (testActive && testMode) typingArea.commit(char);
+  else if (testActive) stats.commit(true);
+}
+
+// ── Key press ──────────────────────────────────────────────────────────────
+function handlePress(trigger) {
+  flashBtn(trigger);
+  const evt = engine.press(trigger);
+  if (evt.type === 'pending') {
+    $status.textContent = `[${trigger}] pending`;
+  } else if (evt.type === 'commit') {
+    $status.textContent = `[${evt.firstKey}]→[${evt.secondKey}] idx${evt.idx} → '${evt.char}'`;
+    dispatchChar(evt.char);
+  }
+  renderKb();
+}
+
+function handleSpace() {
+  flashCtrl($btnSpace);
+  if (regularMode) { fieldInsert(' '); if(testActive&&testMode) typingArea.commit(' '); return; }
+  const evt = engine.space();
+  if (evt.type === 'commit' || evt.type === 'duplicate') {
+    dispatchChar(evt.char);
+    $status.textContent = evt.type === 'duplicate' ? `duplicated '${evt.char}'` : `space → '${evt.char}'`;
+  }
+  renderKb();
+}
+
+function handleBackspace() {
+  flashCtrl($btnBack);
+  if (regularMode) {
+    fieldBackspace();
+    if (testActive && testMode) typingArea.stepBack();
+    return;
+  }
+  const evt = engine.backspace();
+  if (evt.type === 'cancel') { $status.textContent = `cancelled [${evt.trigger}]`; }
+  if (evt.type === 'delete') {
+    fieldBackspace();
+    if (testActive && testMode) typingArea.stepBack();
+    $status.textContent = `deleted '${evt.char}'`;
+  }
+  renderKb();
+}
+
+function handleClear() {
+  flashCtrl($btnClear);
+  engine.reset();
+  $field.value = '';
+  $status.textContent = '';
+  renderKb();
 }
 
 // ── Test lifecycle ─────────────────────────────────────────────────────────
@@ -97,17 +218,13 @@ function startTest() {
   stats.reset();
   statsBar.reset();
   engine.reset();
-  $committed.textContent = '';
-  while ($committed.firstChild) $committed.removeChild($committed.firstChild);
+  $field.value = '';
   $resultsSection.classList.add('hidden');
-  if (testMode) {
-    $testSection.classList.remove('hidden');
-    typingArea.start();
-  } else {
-    $testSection.classList.add('hidden');
-  }
+  $testSection.classList.toggle('hidden', !testMode);
+  if (testMode) typingArea.start();
   statsBar.start();
-  render();
+  $field.focus();
+  renderKb();
 }
 
 function endTest() {
@@ -121,112 +238,33 @@ function endTest() {
   $resultsSection.classList.remove('hidden');
 }
 
-// ── Dispatch committed char from engine ────────────────────────────────────
-function dispatchChar(char) {
-  // Special token — apply side effect to output area
-  if (TOKEN_EFFECTS[char]) {
-    TOKEN_EFFECTS[char]($committed);
-    if (testActive) stats.commit(true);
-    return;
-  }
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init() {
+  const result = await layout.fetch('./docs/layout.json');
+  if (!result.ok) { $status.textContent = 'Layout error: ' + result.errors.join(', '); return; }
+  layoutData = layout.raw;
+  engine.loadLayout(layoutData);
+  buildTraining();
+  buildMature();
 
-  // Printable char — feed to typing test if active
-  if (testActive && testMode) {
-    typingArea.commit(char);
-  } else if (testActive && !testMode) {
-    // Open writing — commit to output and count for WPM
-    $committed.textContent += char;
-    stats.commit(true);
-    // End open writing session when user presses ESC via engine (handled in TOKEN_EFFECTS)
-  } else {
-    $committed.textContent += char;
-  }
-}
+  try { wordList = await (await fetch('./words/en-200.json')).json(); }
+  catch { wordList = ['the','be','to','of','and','in','that','have','it','for']; }
 
-// ── Key press ──────────────────────────────────────────────────────────────
-function handlePress(trigger) {
-  flashBtn(trigger);
-  const evt = engine.press(trigger);
-  if (evt.type === 'pending') {
-    $status.textContent = `[${trigger}] pending`;
-  } else if (evt.type === 'commit') {
-    $status.textContent = `[${evt.firstKey}]→[${evt.secondKey}] idx${evt.idx} → '${evt.char}'`;
-    dispatchChar(evt.char);
-  }
-  render();
-}
+  typingArea = new TypingArea($typingArea, wordList, 30);
+  typingArea.onChar     = (correct) => stats.commit(correct);
+  typingArea.onComplete = () => endTest();
 
-function handleSpace() {
-  flashCtrl($btnSpace);
-  if (regularMode) { dispatchChar(' '); render(); return; }
-  const evt = engine.space();
-  if (evt.type === 'commit')    { dispatchChar(evt.char); $status.textContent = `space → '${evt.char}'`; }
-  if (evt.type === 'duplicate') { dispatchChar(evt.char); $status.textContent = `duplicated '${evt.char}'`; }
-  render();
-}
+  statsBar = new StatsBar({
+    wpm:  document.getElementById('stat-wpm'),
+    acc:  document.getElementById('stat-acc'),
+    time: document.getElementById('stat-time'),
+  }, stats);
 
-function handleBackspace() {
-  flashCtrl($btnBack);
-  if (regularMode) {
-    if (testActive && testMode) typingArea.stepBack();
-    else TOKEN_EFFECTS['BS']($committed);
-    render(); return;
-  }
-  const evt = engine.backspace();
-  if (evt.type === 'cancel') { $status.textContent = `cancelled [${evt.trigger}]`; }
-  if (evt.type === 'delete') {
-    // Backspace on committed — undo last char in output and step back in test
-    if (testActive && testMode) typingArea.stepBack();
-    TOKEN_EFFECTS['BS']($committed);
-    $status.textContent = `deleted '${evt.char}'`;
-  }
-  render();
-}
-
-function handleClear() {
-  flashCtrl($btnClear);
-  engine.reset();
-  $committed.textContent = '';
-  while ($committed.firstChild) $committed.removeChild($committed.firstChild);
-  $status.textContent = '';
-  render();
-}
-
-// ── View toggle ────────────────────────────────────────────────────────────
-document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    currentView = btn.dataset.view;
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    $kbTraining.classList.toggle('active', currentView === 'training');
-    $kbMature.classList.toggle('active',   currentView === 'type');
-    render();
-  });
-});
-
-// ── Regular mode toggle ────────────────────────────────────────────────────
-$btnRegular.addEventListener('click', () => {
-  regularMode = !regularMode;
-  $btnRegular.classList.toggle('active', regularMode);
-  $btnRegular.textContent = regularMode ? 'mapcopy' : 'regular';
-  engine.reset();
-  render();
-});
-
-// ── Test mode toggle ───────────────────────────────────────────────────────
-$btnTestMode.addEventListener('click', () => {
-  testMode = !testMode;
-  $btnTestMode.classList.toggle('active', testMode);
-  $btnTestMode.textContent = testMode ? 'open' : 'test';
   startTest();
-});
+}
 
-$btnRestart.addEventListener('click', startTest);
-$btnAgain.addEventListener('click',   () => { $resultsSection.classList.add('hidden'); startTest(); });
-
-// ── Render ─────────────────────────────────────────────────────────────────
-function render() {
-  // Only update pending display — committed-text is managed by dispatchChar
+// ── Render keyboard only ───────────────────────────────────────────────────
+function renderKb() {
   $pending.textContent = engine.pending ? engine._byT[engine.pending].chars[0] : '';
 
   document.querySelectorAll('.key-btn').forEach(btn => {
@@ -250,24 +288,98 @@ function render() {
   });
 }
 
-// ── Flash helpers ──────────────────────────────────────────────────────────
-function flashBtn(t) {
-  document.querySelectorAll(`[data-t="${CSS.escape(t)}"]`).forEach(el => {
-    el.classList.add('flash');
-    setTimeout(() => el.classList.remove('flash'), 110);
+// ── View toggle ────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentView = btn.dataset.view;
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    $kbTraining.classList.toggle('active', currentView === 'training');
+    $kbMature.classList.toggle('active',   currentView === 'type');
+    renderKb();
   });
-}
-function flashCtrl(el) {
-  if (!el) return;
-  el.classList.add('flash');
-  setTimeout(() => el.classList.remove('flash'), 110);
+});
+
+// ── Control toggles ────────────────────────────────────────────────────────
+$btnRegular.addEventListener('click', () => {
+  regularMode = !regularMode;
+  $btnRegular.classList.toggle('active', regularMode);
+  $btnRegular.textContent = regularMode ? 'mapcopy' : 'regular';
+  engine.reset();
+  renderKb();
+});
+
+$btnTestMode.addEventListener('click', () => {
+  testMode = !testMode;
+  $btnTestMode.classList.toggle('active', testMode);
+  $btnTestMode.textContent = testMode ? 'open' : 'test';
+  startTest();
+});
+
+$btnRestart.addEventListener('click', startTest);
+$btnAgain.addEventListener('click', () => { $resultsSection.classList.add('hidden'); startTest(); });
+$btnSpace.addEventListener('click', handleSpace);
+$btnBack.addEventListener('click',  handleBackspace);
+$btnClear.addEventListener('click', handleClear);
+
+// ── Keyboard events ────────────────────────────────────────────────────────
+// Intercept keydown on the whole document so MapCopy keys work even when textarea is focused
+document.addEventListener('keydown', e => {
+  if (regularMode) {
+    // Let textarea handle everything natively — only intercept Escape for clear
+    if (e.key === 'Escape') { e.preventDefault(); handleClear(); }
+    // Track chars for stats in open mode
+    if (testActive && !testMode && e.key.length === 1) stats.commit(true);
+    return;
+  }
+
+  // MapCopy mode — intercept all keys
+  if (e.key === ' ')         { e.preventDefault(); handleSpace();     return; }
+  if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(); return; }
+  if (e.key === 'Escape')    { e.preventDefault(); handleClear();     return; }
+  if (!layoutData) return;
+  const triggers = layoutData.map(k => k.t);
+  if (triggers.includes(e.key))               { e.preventDefault(); handlePress(e.key);               return; }
+  if (triggers.includes(e.key.toLowerCase())) { e.preventDefault(); handlePress(e.key.toLowerCase()); }
+}, true);  // capture phase so we intercept before textarea
+
+// ── Matrix (lazy) ──────────────────────────────────────────────────────────
+document.querySelector('.matrix-panel').addEventListener('toggle', e => {
+  if (e.target.open) buildMatrix();
+});
+
+function buildMatrix() {
+  if ($matrixBody.dataset.built) return;
+  $matrixBody.dataset.built = '1';
+  const triggers = layoutData.map(k => k.t);
+  const tbl = document.createElement('table'); tbl.className = 'mx-table';
+  const thead = document.createElement('thead');
+  const hr = document.createElement('tr'); hr.innerHTML = '<th>↓1st 2nd→</th>';
+  triggers.forEach(t => { const th = document.createElement('th'); th.textContent = t; hr.appendChild(th); });
+  thead.appendChild(hr); tbl.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  triggers.forEach(fT => {
+    const tr = document.createElement('tr');
+    const th = document.createElement('th'); th.textContent = fT; tr.appendChild(th);
+    triggers.forEach(sT => {
+      const { char } = engine.resolve(fT, sT);
+      const td = document.createElement('td');
+      td.textContent = char.length > 4 ? char.slice(0,4) : char;
+      td.title = `${fT}→${sT} = '${char}'`;
+      if (isSpecial(char)) td.classList.add('sp');
+      td.addEventListener('click', () => { dispatchChar(char); renderKb(); });
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody); $matrixBody.appendChild(tbl);
 }
 
-// ── Build training keyboard ────────────────────────────────────────────────
+// ── Build keyboards ────────────────────────────────────────────────────────
 function buildTraining() {
-  [{ label:'top',    keys: layoutData.slice(0,4)  },
-   { label:'home',   keys: layoutData.slice(4,8)  },
-   { label:'bottom', keys: layoutData.slice(8,12) }].forEach(row => {
+  [{ label:'top', keys:layoutData.slice(0,4) },
+   { label:'home', keys:layoutData.slice(4,8) },
+   { label:'bottom', keys:layoutData.slice(8,12) }].forEach(row => {
     const rd = document.createElement('div'); rd.className = 'kb-row';
     const lb = document.createElement('div'); lb.className = 'row-label'; lb.textContent = row.label;
     rd.appendChild(lb);
@@ -289,18 +401,17 @@ function buildTraining() {
         });
         btn.appendChild(band);
       });
-      btn.addEventListener('click', () => handlePress(key.t));
+      btn.addEventListener('mousedown', e => { e.preventDefault(); handlePress(key.t); });
       rd.appendChild(btn);
     });
     $kbTraining.appendChild(rd);
   });
 }
 
-// ── Build mature keyboard ──────────────────────────────────────────────────
 function buildMature() {
-  [{ label:'top',    keys: layoutData.slice(0,4)  },
-   { label:'home',   keys: layoutData.slice(4,8)  },
-   { label:'bottom', keys: layoutData.slice(8,12) }].forEach(row => {
+  [{ label:'top', keys:layoutData.slice(0,4) },
+   { label:'home', keys:layoutData.slice(4,8) },
+   { label:'bottom', keys:layoutData.slice(8,12) }].forEach(row => {
     const rd = document.createElement('div'); rd.className = 'kb-row';
     const lb = document.createElement('div'); lb.className = 'row-label'; lb.textContent = row.label;
     rd.appendChild(lb);
@@ -308,69 +419,11 @@ function buildMature() {
       const btn = document.createElement('button');
       btn.className = 'mkey'; btn.dataset.t = key.t;
       btn.innerHTML = `<span class="mkey-trigger">${key.t}</span><span class="mkey-preview">${key.chars[0]}</span>`;
-      btn.addEventListener('click', () => handlePress(key.t));
+      btn.addEventListener('mousedown', e => { e.preventDefault(); handlePress(key.t); });
       rd.appendChild(btn);
     });
     $kbMature.appendChild(rd);
   });
 }
-
-// ── Matrix (lazy) ──────────────────────────────────────────────────────────
-function buildMatrix() {
-  if ($matrixBody.dataset.built) return;
-  $matrixBody.dataset.built = '1';
-  const triggers = layoutData.map(k => k.t);
-  const tbl = document.createElement('table'); tbl.className = 'mx-table';
-  const thead = document.createElement('thead');
-  const hr = document.createElement('tr'); hr.innerHTML = '<th>↓1st 2nd→</th>';
-  triggers.forEach(t => { const th = document.createElement('th'); th.textContent = t; hr.appendChild(th); });
-  thead.appendChild(hr); tbl.appendChild(thead);
-  const tbody = document.createElement('tbody');
-  triggers.forEach(fT => {
-    const tr = document.createElement('tr');
-    const th = document.createElement('th'); th.textContent = fT; tr.appendChild(th);
-    triggers.forEach(sT => {
-      const { char } = engine.resolve(fT, sT);
-      const td = document.createElement('td');
-      td.textContent = char.length > 4 ? char.slice(0,4) : char;
-      td.title = `${fT}→${sT} = '${char}'`;
-      if (isSpecial(char)) td.classList.add('sp');
-      td.addEventListener('click', () => { dispatchChar(char); render(); });
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  });
-  tbl.appendChild(tbody); $matrixBody.appendChild(tbl);
-}
-
-// ── Event listeners ────────────────────────────────────────────────────────
-$btnSpace.addEventListener('click', handleSpace);
-$btnBack.addEventListener('click',  handleBackspace);
-$btnClear.addEventListener('click', handleClear);
-
-document.querySelector('.matrix-panel').addEventListener('toggle', e => {
-  if (e.target.open) buildMatrix();
-});
-
-document.addEventListener('keydown', e => {
-  // Regular keyboard mode
-  if (regularMode) {
-    if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(); return; }
-    if (e.key === 'Escape')    { handleClear(); return; }
-    if (e.key === ' ')         { e.preventDefault(); dispatchChar(' '); render(); return; }
-    if (e.key === 'Enter')     { e.preventDefault(); dispatchChar('\n'); TOKEN_EFFECTS['ENT']($committed); render(); return; }
-    if (e.key === 'Tab')       { e.preventDefault(); dispatchChar('\t'); TOKEN_EFFECTS['TAB']($committed); render(); return; }
-    if (e.key.length === 1)    { dispatchChar(e.key); $committed.textContent += e.key; if(testActive&&testMode) {} render(); return; }
-    return;
-  }
-  // MapCopy mode
-  if (e.key === ' ')         { e.preventDefault(); handleSpace();     return; }
-  if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(); return; }
-  if (e.key === 'Escape')    { handleClear(); return; }
-  if (!layoutData) return;
-  const triggers = layoutData.map(k => k.t);
-  if (triggers.includes(e.key))               { e.preventDefault(); handlePress(e.key);               return; }
-  if (triggers.includes(e.key.toLowerCase())) { e.preventDefault(); handlePress(e.key.toLowerCase()); }
-});
 
 init();
