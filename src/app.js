@@ -319,30 +319,27 @@ $btnTestMode.addEventListener('click', () => {
 
 $btnRestart.addEventListener('click', startTest);
 $btnAgain.addEventListener('click', () => { $resultsSection.classList.add('hidden'); startTest(); });
-$btnSpace.addEventListener('click', handleSpace);
-$btnBack.addEventListener('click',  handleBackspace);
-$btnClear.addEventListener('click', handleClear);
+$btnSpace.addEventListener('click', () => { handleSpace();     $field.focus(); });
+$btnBack.addEventListener('click',  () => { handleBackspace(); $field.focus(); });
+$btnClear.addEventListener('click', () => { handleClear();     $field.focus(); });
 
 // ── Keyboard events ────────────────────────────────────────────────────────
-$field.addEventListener('keydown', e => {
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'BUTTON') return;
   if (regularMode) {
-    // Native textarea behaviour — track stats in open mode
     if (e.key === 'Escape') { e.preventDefault(); handleClear(); return; }
     if (testActive && !testMode && e.key.length === 1) stats.commit(true);
     return;
   }
-
-  // MapCopy mode — block ALL native input, handle everything ourselves
-  e.preventDefault();
-  e.stopPropagation();
-
-  if (e.key === ' ')         { handleSpace();     return; }
-  if (e.key === 'Backspace') { handleBackspace(); return; }
-  if (e.key === 'Escape')    { handleClear();     return; }
+  // MapCopy mode — we handle everything, block native textarea input
+  if (e.key === ' ')         { e.preventDefault(); handleSpace();     return; }
+  if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(); return; }
+  if (e.key === 'Escape')    { e.preventDefault(); handleClear();     return; }
   if (!layoutData) return;
   const triggers = layoutData.map(k => k.t);
-  if (triggers.includes(e.key))               { handlePress(e.key);               return; }
-  if (triggers.includes(e.key.toLowerCase())) { handlePress(e.key.toLowerCase()); }
+  if (triggers.includes(e.key))               { e.preventDefault(); handlePress(e.key);               return; }
+  if (triggers.includes(e.key.toLowerCase())) { e.preventDefault(); handlePress(e.key.toLowerCase()); return; }
+  if (['INPUT','TEXTAREA'].includes(e.target.tagName)) e.preventDefault();
 });
 
 // ── Matrix (lazy) ──────────────────────────────────────────────────────────
@@ -403,7 +400,8 @@ function buildTraining() {
         });
         btn.appendChild(band);
       });
-      btn.addEventListener('mousedown', e => { e.preventDefault(); handlePress(key.t); });
+      btn.addEventListener('pointerdown', e => { e.preventDefault(); });
+      btn.addEventListener('click', () => { handlePress(key.t); $field.focus(); });
       rd.appendChild(btn);
     });
     $kbTraining.appendChild(rd);
@@ -421,7 +419,8 @@ function buildMature() {
       const btn = document.createElement('button');
       btn.className = 'mkey'; btn.dataset.t = key.t;
       btn.innerHTML = `<span class="mkey-trigger">${key.t}</span><span class="mkey-preview">${key.chars[0]}</span>`;
-      btn.addEventListener('mousedown', e => { e.preventDefault(); handlePress(key.t); });
+      btn.addEventListener('pointerdown', e => { e.preventDefault(); });
+      btn.addEventListener('click', () => { handlePress(key.t); $field.focus(); });
       rd.appendChild(btn);
     });
     $kbMature.appendChild(rd);
