@@ -1,7 +1,6 @@
 /**
- * app.js
- * Bootstrap: loads layout + word list, wires KeyEngine,
- * builds training + mature views, handles typing test mode.
+ * app.js — MapCopy bootstrap
+ * Handles: layout loading, keyboard views, typing test, open writing, special tokens.
  */
 
 import { KeyEngine  } from './engine/KeyEngine.js';
@@ -10,69 +9,78 @@ import { Stats      } from './ui/Stats.js';
 import { TypingArea } from './ui/TypingArea.js';
 import { StatsBar   } from './ui/StatsBar.js';
 
-const COLS     = 4;
-const BANDS    = [[8,9,10,11],[0,1,2,3],[4,5,6,7]];
+// ── Constants ──────────────────────────────────────────────────────────────
+const BANDS     = [[8,9,10,11],[0,1,2,3],[4,5,6,7]];
 const isSpecial = c => c.length > 1 || ['…','•','×','÷','±','€','£','¥','©'].includes(c);
 
-// ── Core instances ─────────────────────────────────────────────────────────
+// Tokens that produce side effects on the output area
+const TOKEN_EFFECTS = {
+  'SP':   (el) => { el.textContent += ' '; },
+  'TAB':  (el) => { el.textContent += '\t'; },
+  'ENT':  (el) => { el.appendChild(document.createElement('br')); },
+  'BS':   (el) => {
+    if (el.lastChild?.nodeName === 'BR') { el.removeChild(el.lastChild); }
+    else if (el.textContent.length > 0) { el.textContent = el.textContent.slice(0,-1); }
+  },
+  'DEL':  (el) => {
+    if (el.lastChild?.nodeName === 'BR') { el.removeChild(el.lastChild); }
+    else if (el.textContent.length > 0) { el.textContent = el.textContent.slice(0,-1); }
+  },
+  'ESC':  (el) => { el.textContent = ''; while(el.firstChild) el.removeChild(el.firstChild); },
+};
+
+// Tokens that map to a single printable char for the typing prompt
+const TOKEN_TO_CHAR = { 'SP': ' ', 'TAB': '\t', 'ENT': '\n' };
+
+// ── State ──────────────────────────────────────────────────────────────────
 const engine = new KeyEngine();
 const layout = new Layout();
 const stats  = new Stats();
-let   layoutData = null;
-let   wordList   = [];
-let   typingArea = null;
-let   statsBar   = null;
-let   currentView  = 'training';   // 'training' | 'type'
-let   testActive   = false;
-let   regularMode  = false;            // true = bypass engine, type directly
+let layoutData   = null;
+let wordList     = [];
+let typingArea   = null;
+let statsBar     = null;
+let regularMode  = false;   // bypass engine, type with normal keyboard
+let testMode     = true;    // true = typing test active, false = open writing with WPM
+let testActive   = false;
+let currentView  = 'training';
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
-const $committed    = document.getElementById('committed-text');
-const $pending      = document.getElementById('pending-char');
-const $status       = document.getElementById('status-line');
-const $kbTraining   = document.getElementById('keyboard-training');
-const $kbMature     = document.getElementById('keyboard-mature');
-const $matrixBody   = document.getElementById('matrix-body');
-const $btnSpace     = document.getElementById('btn-space');
-const $btnBack      = document.getElementById('btn-back');
-const $btnClear     = document.getElementById('btn-clear');
-const $testSection  = document.getElementById('test-section');
+const $committed      = document.getElementById('committed-text');
+const $pending        = document.getElementById('pending-char');
+const $status         = document.getElementById('status-line');
+const $kbTraining     = document.getElementById('keyboard-training');
+const $kbMature       = document.getElementById('keyboard-mature');
+const $matrixBody     = document.getElementById('matrix-body');
+const $btnSpace       = document.getElementById('btn-space');
+const $btnBack        = document.getElementById('btn-back');
+const $btnClear       = document.getElementById('btn-clear');
+const $btnRegular     = document.getElementById('btn-regular');
+const $btnTestMode    = document.getElementById('btn-test-mode');
+const $testSection    = document.getElementById('test-section');
 const $resultsSection = document.getElementById('results-section');
-const $typingArea   = document.getElementById('typing-area');
-const $btnRestart   = document.getElementById('btn-restart');
-const $btnAgain     = document.getElementById('btn-again');
+const $typingArea     = document.getElementById('typing-area');
+const $btnRestart     = document.getElementById('btn-restart');
+const $btnAgain       = document.getElementById('btn-again');
 
 // ── Init ───────────────────────────────────────────────────────────────────
 async function init() {
-  // Load layout
   const result = await layout.fetch('./docs/layout.json');
-  if (!result.ok) {
-    $status.textContent = 'Layout error: ' + result.errors.join(', ');
-    return;
-  }
+  if (!result.ok) { $status.textContent = 'Layout error: ' + result.errors.join(', '); return; }
   layoutData = layout.raw;
   engine.loadLayout(layoutData);
   buildTraining();
   buildMature();
 
-  // Load word list
   try {
     const res = await fetch('./words/en-200.json');
     wordList  = await res.json();
-  } catch {
-    wordList = ['the','be','to','of','and','in','that','have','it','for'];
-  }
+  } catch { wordList = ['the','be','to','of','and','in','that','have','it','for']; }
 
-  // Typing area
-  typingArea = new TypingArea($typingArea, $committed, wordList, 30);
-  typingArea.onChar = (correct) => {
-    stats.commit(correct);
-  };
-  typingArea.onComplete = () => {
-    endTest();
-  };
+  typingArea = new TypingArea($typingArea, wordList, 30);
+  typingArea.onChar = (correct) => stats.commit(correct);
+  typingArea.onComplete = () => endTest();
 
-  // Stats bar
   statsBar = new StatsBar({
     wpm:  document.getElementById('stat-wpm'),
     acc:  document.getElementById('stat-acc'),
@@ -83,57 +91,143 @@ async function init() {
   render();
 }
 
-// ── View switching ─────────────────────────────────────────────────────────
-document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const view = btn.dataset.view;
-    currentView = view;
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    // Only switch keyboard display — everything else stays visible
-    document.getElementById('keyboard-training').classList.toggle('active', view === 'training');
-    document.getElementById('keyboard-mature').classList.toggle('active', view === 'type');
-    render();
-  });
-});
-
 // ── Test lifecycle ─────────────────────────────────────────────────────────
 function startTest() {
   testActive = true;
   stats.reset();
   statsBar.reset();
-  typingArea.start();
-  statsBar.start();
-  $resultsSection.classList.add('hidden');
   engine.reset();
+  $committed.textContent = '';
+  while ($committed.firstChild) $committed.removeChild($committed.firstChild);
+  $resultsSection.classList.add('hidden');
+  if (testMode) {
+    $testSection.classList.remove('hidden');
+    typingArea.start();
+  } else {
+    $testSection.classList.add('hidden');
+  }
+  statsBar.start();
   render();
 }
 
-function stopTest() {
+function endTest() {
   testActive = false;
   statsBar.stop();
-}
-
-function endTest() {
-  stopTest();
-  document.getElementById('res-wpm').textContent   = stats.wpm(stats.elapsed() * 1000 || 10000);
+  const elapsed = stats.elapsed() * 1000 || 10000;
+  document.getElementById('res-wpm').textContent   = stats.wpm(elapsed);
   document.getElementById('res-acc').textContent   = stats.accuracy() + '%';
   document.getElementById('res-chars').textContent = stats.committed;
   document.getElementById('res-time').textContent  = stats.elapsed() + 's';
   $resultsSection.classList.remove('hidden');
 }
 
-$btnRestart.addEventListener('click', startTest);
-$btnAgain.addEventListener('click', () => {
-  $resultsSection.classList.add('hidden');
+// ── Dispatch committed char from engine ────────────────────────────────────
+function dispatchChar(char) {
+  // Special token — apply side effect to output area
+  if (TOKEN_EFFECTS[char]) {
+    TOKEN_EFFECTS[char]($committed);
+    if (testActive) stats.commit(true);
+    return;
+  }
+
+  // Printable char — feed to typing test if active
+  if (testActive && testMode) {
+    typingArea.commit(char);
+  } else if (testActive && !testMode) {
+    // Open writing — commit to output and count for WPM
+    $committed.textContent += char;
+    stats.commit(true);
+    // End open writing session when user presses ESC via engine (handled in TOKEN_EFFECTS)
+  } else {
+    $committed.textContent += char;
+  }
+}
+
+// ── Key press ──────────────────────────────────────────────────────────────
+function handlePress(trigger) {
+  flashBtn(trigger);
+  const evt = engine.press(trigger);
+  if (evt.type === 'pending') {
+    $status.textContent = `[${trigger}] pending`;
+  } else if (evt.type === 'commit') {
+    $status.textContent = `[${evt.firstKey}]→[${evt.secondKey}] idx${evt.idx} → '${evt.char}'`;
+    dispatchChar(evt.char);
+  }
+  render();
+}
+
+function handleSpace() {
+  flashCtrl($btnSpace);
+  if (regularMode) { dispatchChar(' '); render(); return; }
+  const evt = engine.space();
+  if (evt.type === 'commit')    { dispatchChar(evt.char); $status.textContent = `space → '${evt.char}'`; }
+  if (evt.type === 'duplicate') { dispatchChar(evt.char); $status.textContent = `duplicated '${evt.char}'`; }
+  render();
+}
+
+function handleBackspace() {
+  flashCtrl($btnBack);
+  if (regularMode) {
+    if (testActive && testMode) typingArea.stepBack();
+    else TOKEN_EFFECTS['BS']($committed);
+    render(); return;
+  }
+  const evt = engine.backspace();
+  if (evt.type === 'cancel') { $status.textContent = `cancelled [${evt.trigger}]`; }
+  if (evt.type === 'delete') {
+    // Backspace on committed — undo last char in output and step back in test
+    if (testActive && testMode) typingArea.stepBack();
+    TOKEN_EFFECTS['BS']($committed);
+    $status.textContent = `deleted '${evt.char}'`;
+  }
+  render();
+}
+
+function handleClear() {
+  flashCtrl($btnClear);
+  engine.reset();
+  $committed.textContent = '';
+  while ($committed.firstChild) $committed.removeChild($committed.firstChild);
+  $status.textContent = '';
+  render();
+}
+
+// ── View toggle ────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentView = btn.dataset.view;
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    $kbTraining.classList.toggle('active', currentView === 'training');
+    $kbMature.classList.toggle('active',   currentView === 'type');
+    render();
+  });
+});
+
+// ── Regular mode toggle ────────────────────────────────────────────────────
+$btnRegular.addEventListener('click', () => {
+  regularMode = !regularMode;
+  $btnRegular.classList.toggle('active', regularMode);
+  $btnRegular.textContent = regularMode ? 'mapcopy' : 'regular';
+  engine.reset();
+  render();
+});
+
+// ── Test mode toggle ───────────────────────────────────────────────────────
+$btnTestMode.addEventListener('click', () => {
+  testMode = !testMode;
+  $btnTestMode.classList.toggle('active', testMode);
+  $btnTestMode.textContent = testMode ? 'open' : 'test';
   startTest();
 });
 
+$btnRestart.addEventListener('click', startTest);
+$btnAgain.addEventListener('click',   () => { $resultsSection.classList.add('hidden'); startTest(); });
+
 // ── Render ─────────────────────────────────────────────────────────────────
 function render() {
-  $committed.textContent = engine.text;
-  $pending.textContent   = engine.pending
-    ? engine._byT[engine.pending].chars[0] : '';
+  // Only update pending display — committed-text is managed by dispatchChar
+  $pending.textContent = engine.pending ? engine._byT[engine.pending].chars[0] : '';
 
   document.querySelectorAll('.key-btn').forEach(btn => {
     const t = btn.dataset.t;
@@ -150,61 +244,15 @@ function render() {
     btn.classList.toggle('is-pending', engine.pending === t);
     const pv = btn.querySelector('.mkey-preview');
     if (!pv) return;
-    const char  = engine.pending ? engine.resolve(engine.pending, t).char : engine._byT[t].chars[0];
+    const char = engine.pending ? engine.resolve(engine.pending, t).char : engine._byT[t].chars[0];
     pv.textContent = char.length > 4 ? char.slice(0,3)+'…' : char;
     pv.className   = 'mkey-preview' + (isSpecial(char) ? ' sp' : '');
   });
 }
 
-// ── Key press ──────────────────────────────────────────────────────────────
-function handlePress(trigger) {
-  flashBtn(trigger);
-  const evt = engine.press(trigger);
-
-  if (testActive && evt.type === 'commit') {
-    typingArea.commit(evt.char);
-  }
-
-  if (evt.type === 'pending') {
-    $status.textContent = `[${trigger}] pending`;
-  } else if (evt.type === 'commit') {
-    $status.textContent = `[${evt.firstKey}]→[${evt.secondKey}] idx${evt.idx} → '${evt.char}'`;
-  }
-  render();
-}
-
-function handleSpace() {
-  flashCtrl($btnSpace);
-  const evt = engine.space();
-  if (testActive && evt.type === 'commit') {
-    typingArea.commit(evt.char);
-  }
-  if (evt.type === 'commit')    $status.textContent = `space → '${evt.char}'`;
-  if (evt.type === 'duplicate') $status.textContent = `duplicated '${evt.char}'`;
-  render();
-}
-
-function handleBackspace() {
-  flashCtrl($btnBack);
-  const evt = engine.backspace();
-  if (testActive && evt.type === 'delete') {
-    typingArea.stepBack();
-  }
-  if (evt.type === 'cancel') $status.textContent = `cancelled [${evt.trigger}]`;
-  if (evt.type === 'delete') $status.textContent = `deleted '${evt.char}'`;
-  render();
-}
-
-function handleClear() {
-  flashCtrl($btnClear);
-  engine.reset();
-  $status.textContent = '';
-  render();
-}
-
 // ── Flash helpers ──────────────────────────────────────────────────────────
-function flashBtn(trigger) {
-  document.querySelectorAll(`[data-t="${CSS.escape(trigger)}"]`).forEach(el => {
+function flashBtn(t) {
+  document.querySelectorAll(`[data-t="${CSS.escape(t)}"]`).forEach(el => {
     el.classList.add('flash');
     setTimeout(() => el.classList.remove('flash'), 110);
   });
@@ -215,10 +263,10 @@ function flashCtrl(el) {
   setTimeout(() => el.classList.remove('flash'), 110);
 }
 
-// ── Build keyboards ────────────────────────────────────────────────────────
+// ── Build training keyboard ────────────────────────────────────────────────
 function buildTraining() {
-  [{ label:'top', keys: layoutData.slice(0,4) },
-   { label:'home', keys: layoutData.slice(4,8) },
+  [{ label:'top',    keys: layoutData.slice(0,4)  },
+   { label:'home',   keys: layoutData.slice(4,8)  },
    { label:'bottom', keys: layoutData.slice(8,12) }].forEach(row => {
     const rd = document.createElement('div'); rd.className = 'kb-row';
     const lb = document.createElement('div'); lb.className = 'row-label'; lb.textContent = row.label;
@@ -248,9 +296,10 @@ function buildTraining() {
   });
 }
 
+// ── Build mature keyboard ──────────────────────────────────────────────────
 function buildMature() {
-  [{ label:'top', keys: layoutData.slice(0,4) },
-   { label:'home', keys: layoutData.slice(4,8) },
+  [{ label:'top',    keys: layoutData.slice(0,4)  },
+   { label:'home',   keys: layoutData.slice(4,8)  },
    { label:'bottom', keys: layoutData.slice(8,12) }].forEach(row => {
     const rd = document.createElement('div'); rd.className = 'kb-row';
     const lb = document.createElement('div'); lb.className = 'row-label'; lb.textContent = row.label;
@@ -286,11 +335,7 @@ function buildMatrix() {
       td.textContent = char.length > 4 ? char.slice(0,4) : char;
       td.title = `${fT}→${sT} = '${char}'`;
       if (isSpecial(char)) td.classList.add('sp');
-      td.addEventListener('click', () => {
-        engine._committed.push(char); engine._pending = null;
-        $status.textContent = `matrix: [${fT}]→[${sT}] = '${char}'`;
-        render();
-      });
+      td.addEventListener('click', () => { dispatchChar(char); render(); });
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
@@ -303,36 +348,19 @@ $btnSpace.addEventListener('click', handleSpace);
 $btnBack.addEventListener('click',  handleBackspace);
 $btnClear.addEventListener('click', handleClear);
 
-const $btnRegular = document.getElementById('btn-regular');
-$btnRegular.addEventListener('click', () => {
-  regularMode = !regularMode;
-  $btnRegular.classList.toggle('active', regularMode);
-  $btnRegular.textContent = regularMode ? 'mapcopy' : 'regular';
-  engine.reset();
-  render();
-});
-
 document.querySelector('.matrix-panel').addEventListener('toggle', e => {
   if (e.target.open) buildMatrix();
 });
 
 document.addEventListener('keydown', e => {
-  // Regular keyboard mode — bypass engine, type directly
+  // Regular keyboard mode
   if (regularMode) {
-    if (e.key === 'Backspace') {
-      e.preventDefault();
-      if (testActive) typingArea.stepBack();
-      else { const t = $committed.textContent; $committed.textContent = t.slice(0,-1); }
-      return;
-    }
-    if (e.key === 'Escape') { handleClear(); return; }
-    if (e.key.length === 1 || e.key === 'Enter' || e.key === 'Tab') {
-      e.preventDefault();
-      const char = e.key === 'Enter' ? 'ENT' : e.key === 'Tab' ? 'TAB' : e.key;
-      if (testActive) typingArea.commit(char);
-      else $committed.textContent += e.key === 'Enter' ? '' : e.key;
-      render();
-    }
+    if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(); return; }
+    if (e.key === 'Escape')    { handleClear(); return; }
+    if (e.key === ' ')         { e.preventDefault(); dispatchChar(' '); render(); return; }
+    if (e.key === 'Enter')     { e.preventDefault(); dispatchChar('\n'); TOKEN_EFFECTS['ENT']($committed); render(); return; }
+    if (e.key === 'Tab')       { e.preventDefault(); dispatchChar('\t'); TOKEN_EFFECTS['TAB']($committed); render(); return; }
+    if (e.key.length === 1)    { dispatchChar(e.key); $committed.textContent += e.key; if(testActive&&testMode) {} render(); return; }
     return;
   }
   // MapCopy mode
