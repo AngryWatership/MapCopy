@@ -63,7 +63,7 @@ async function init() {
   }
 
   // Typing area
-  typingArea = new TypingArea($typingArea, wordList, 30);
+  typingArea = new TypingArea($typingArea, $committed, wordList, 30);
   typingArea.onChar = (correct) => {
     stats.commit(correct);
   };

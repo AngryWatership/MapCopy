@@ -307,6 +307,7 @@ main {
 .tc-pending { color: var(--muted); }
 .tc-correct { color: var(--fg); }
 .tc-wrong   { color: #e05c5c; }
+.tc-flash   { color: #4caf7d; transition: color 75ms ease-out; }
 .tc-cursor  {
   color: var(--fg);
   border-bottom: 2px solid var(--accent);
