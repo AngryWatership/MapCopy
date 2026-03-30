@@ -371,10 +371,10 @@ $btnTest.addEventListener('click', () => {
 });
 
 $btnEdit.addEventListener('click', () => {
-  const open = $editorSec.classList.toggle('hidden');
-  $btnEdit.classList.toggle('active', !open);
-  $btnEdit.textContent = open ? 'edit layout' : 'close editor';
-  if (!open) layoutEditor.render();  // re-render on open in case layout changed externally
+  const nowHidden = $editorSec.classList.toggle('hidden');
+  $btnEdit.classList.toggle('active', !nowHidden);
+  $btnEdit.textContent = nowHidden ? 'edit layout' : 'close editor';
+  if (!nowHidden) layoutEditor.render();
 });
 
 $btnRestart.addEventListener('click', startTest);
