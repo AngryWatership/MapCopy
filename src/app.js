@@ -103,10 +103,9 @@ function fieldDelete() {
   }
 }
 
-/** Fire a native keyboard event on the textarea (for nav keys) */
+/** Move the textarea cursor for navigation keys */
 function fieldFireKey(key) {
-  $field.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
-  // For navigation keys, also manually move cursor since dispatchEvent doesn't always move caret
+  // Manipulate cursor directly — no synthetic events to avoid re-triggering our listener
   const s = $field.selectionStart;
   const v = $field.value;
   const len = v.length;
@@ -210,6 +209,7 @@ function handleClear() {
   $field.value = '';
   $status.textContent = '';
   renderKb();
+  $field.focus();
 }
 
 // ── Test lifecycle ─────────────────────────────────────────────────────────
@@ -307,6 +307,7 @@ $btnRegular.addEventListener('click', () => {
   $btnRegular.textContent = regularMode ? 'mapcopy' : 'regular';
   engine.reset();
   renderKb();
+  $field.focus();
 });
 
 $btnTestMode.addEventListener('click', () => {
@@ -323,25 +324,26 @@ $btnBack.addEventListener('click',  handleBackspace);
 $btnClear.addEventListener('click', handleClear);
 
 // ── Keyboard events ────────────────────────────────────────────────────────
-// Intercept keydown on the whole document so MapCopy keys work even when textarea is focused
-document.addEventListener('keydown', e => {
+$field.addEventListener('keydown', e => {
   if (regularMode) {
-    // Let textarea handle everything natively — only intercept Escape for clear
-    if (e.key === 'Escape') { e.preventDefault(); handleClear(); }
-    // Track chars for stats in open mode
+    // Native textarea behaviour — track stats in open mode
+    if (e.key === 'Escape') { e.preventDefault(); handleClear(); return; }
     if (testActive && !testMode && e.key.length === 1) stats.commit(true);
     return;
   }
 
-  // MapCopy mode — intercept all keys
-  if (e.key === ' ')         { e.preventDefault(); handleSpace();     return; }
-  if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(); return; }
-  if (e.key === 'Escape')    { e.preventDefault(); handleClear();     return; }
+  // MapCopy mode — block ALL native input, handle everything ourselves
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (e.key === ' ')         { handleSpace();     return; }
+  if (e.key === 'Backspace') { handleBackspace(); return; }
+  if (e.key === 'Escape')    { handleClear();     return; }
   if (!layoutData) return;
   const triggers = layoutData.map(k => k.t);
-  if (triggers.includes(e.key))               { e.preventDefault(); handlePress(e.key);               return; }
-  if (triggers.includes(e.key.toLowerCase())) { e.preventDefault(); handlePress(e.key.toLowerCase()); }
-}, true);  // capture phase so we intercept before textarea
+  if (triggers.includes(e.key))               { handlePress(e.key);               return; }
+  if (triggers.includes(e.key.toLowerCase())) { handlePress(e.key.toLowerCase()); }
+});
 
 // ── Matrix (lazy) ──────────────────────────────────────────────────────────
 document.querySelector('.matrix-panel').addEventListener('toggle', e => {
