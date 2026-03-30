@@ -68,6 +68,25 @@
       <button class="ctrl-key ghost" id="btn-regular">regular</button>
       <button class="ctrl-key ghost active" id="btn-test-mode">open</button>
       <button class="ctrl-key ghost" id="btn-edit-layout">edit layout</button>
+      <button class="ctrl-key ghost" id="btn-measure-toggle">measure</button>
+    </section>
+
+    <!-- ── MEASUREMENT SESSION ───────────────────────────────────────── -->
+    <section class="measure-section hidden" id="measure-section">
+      <div class="ms-header">
+        <span class="ms-label">key pair profiler</span>
+        <span id="measure-progress" class="ms-progress">—</span>
+        <button class="le-btn hidden" id="measure-export">export session.json</button>
+      </div>
+      <div class="ms-target" id="measure-target" data-phase="idle">
+        <span class="ms-key" id="measure-first">—</span>
+        <span class="ms-arrow">→</span>
+        <span class="ms-key" id="measure-second">—</span>
+      </div>
+      <div class="ms-controls">
+        <button class="ctrl-key" id="btn-measure">start session</button>
+        <p class="ms-hint">Press the shown key pair in sequence. The tempo will vary. Just follow your natural rhythm.</p>
+      </div>
     </section>
 
     <!-- ── LAYOUT EDITOR ──────────────────────────────────────────── -->

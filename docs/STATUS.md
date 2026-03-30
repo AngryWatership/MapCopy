@@ -6,9 +6,9 @@
 
 ## Current State
 
-**Phase: v0.0.3 built — ready to deploy**
+**Phase: v0.0.5 built — ready to deploy**
 **Repo:  https://github.com/AngryWatership/MapCopy**
-**Tag:   v0.0.2**
+**Tag:   v0.0.4**
 **Local: /mnt/c/Users/PC MAROC/projects/MapCopy (WSL)**
 **Live:  https://angrywatership.github.io/MapCopy**
 
@@ -24,22 +24,25 @@
 
 ## What Is Not Done
 
-- [ ] Deploy v0.0.3 — action required
+- [x] v0.0.4 deployed and live
+- [x] v0.0.5 — measurement session, harmonic sweep, L1/L2 recording, cost matrix, session export
 - [ ] `ö` trigger — non-Nordic keyboard remapping (open)
-- [ ] Measurement session / optimiser (VISION.md)
+- [x] Measurement session (Phase A from VISION.md)
+- [ ] Phase B — optimiser (assign chars to pairs by cost × frequency)
+- [ ] `ö` trigger — non-Nordic keyboard remapping (open)
 
 ---
 
 ## Next Step
 
-**Deploy v0.0.3.**
+**Deploy v0.0.5.**
 
 Run `mapcopy_git.sh`, then:
 ```bash
 cd "/mnt/c/Users/PC MAROC/projects/MapCopy"
 git push origin main
-git tag -a v0.0.3 -m "Phase 3: layout editor, localStorage, JSON import/export"
-git push origin v0.0.3
+git tag -a v0.0.5 -m "Phase 4: measurement session, harmonic sweep, cost matrix"
+git push origin v0.0.5
 ```
 
 ---
@@ -54,4 +57,4 @@ git push origin v0.0.3
 
 ---
 
-*Last updated: session 2 — v0.0.3 built, awaiting deploy*
+*Last updated: session 2 — v0.0.5 built, awaiting deploy*

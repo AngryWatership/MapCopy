@@ -13,7 +13,8 @@ import { Layout     } from './engine/Layout.js';
 import { Stats      } from './ui/Stats.js';
 import { TypingArea } from './ui/TypingArea.js';
 import { StatsBar      } from './ui/StatsBar.js';
-import { LayoutEditor  } from './ui/LayoutEditor.js';
+import { LayoutEditor        } from './ui/LayoutEditor.js';
+import { MeasurementSession  } from './ui/MeasurementSession.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const BANDS      = [[8,9,10,11],[0,1,2,3],[4,5,6,7]];
@@ -34,7 +35,9 @@ let wordList    = [];
 let typingArea  = null;
 let statsBar    = null;
 let regularMode = false;   // true → textarea native, false → MapCopy engine
-let layoutEditor = null;
+let layoutEditor  = null;
+let measurement   = null;
+let measuring     = false;
 let testMode    = true;    // true → word prompt, false → open writing
 let testActive  = false;
 let currentView = 'training';
@@ -54,7 +57,14 @@ const $btnTest   = document.getElementById('btn-test-mode');
 const $testSec   = document.getElementById('test-section');
 const $resultSec = document.getElementById('results-section');
 const $prompt    = document.getElementById('typing-area');
-const $btnRestart= document.getElementById('btn-restart');
+const $btnRestart   = document.getElementById('btn-restart');
+const $measureSec   = document.getElementById('measure-section');
+const $btnMeasure   = document.getElementById('btn-measure');
+const $measureTarget= document.getElementById('measure-target');
+const $measureFirst = document.getElementById('measure-first');
+const $measureSecond= document.getElementById('measure-second');
+const $measureProg  = document.getElementById('measure-progress');
+const $measureExport= document.getElementById('measure-export');
 const $editorSec = document.getElementById('editor-section');
 const $btnEdit   = document.getElementById('btn-edit-layout');
 const $btnAgain  = document.getElementById('btn-again');
@@ -265,6 +275,30 @@ async function init() {
     layoutData = saved;
   }
 
+  // Measurement session
+  measurement = new MeasurementSession(
+    layoutData.map(k => k.t),
+    (fT, sT, trial, total) => {
+      $measureFirst.textContent  = fT;
+      $measureSecond.textContent = sT;
+      $measureTarget.dataset.phase = 'first';
+      $measureTarget.classList.remove('ms-hit');
+    },
+    (done, total) => {
+      $measureProg.textContent = `${done} / ${total} pairs`;
+    },
+    (costMatrix, raw) => {
+      measuring = false;
+      $btnMeasure.textContent = 'start session';
+      $btnMeasure.classList.remove('active');
+      $measureProg.textContent = 'complete — ' + Object.keys(costMatrix).length + ' pairs measured';
+      $measureExport.classList.remove('hidden');
+      $measureTarget.dataset.phase = 'done';
+      $measureFirst.textContent  = '✓';
+      $measureSecond.textContent = '';
+    }
+  );
+
   startTest();
 }
 
@@ -279,6 +313,29 @@ $field.addEventListener('keydown', e => {
     }
     return;
   }
+  // Measurement mode — feed keys to session
+  if (measuring) {
+    e.preventDefault();
+    e.stopPropagation();
+    const t = layoutData.map(k => k.t);
+    const trigger = t.includes(e.key) ? e.key : t.includes(e.key.toLowerCase()) ? e.key.toLowerCase() : null;
+    if (trigger) {
+      const phase = $measureTarget.dataset.phase;
+      if (measurement.keydown(trigger)) {
+        if (phase === 'first') {
+          $measureTarget.dataset.phase = 'second';
+          $measureTarget.classList.add('ms-waiting');
+        } else {
+          $measureTarget.dataset.phase = 'first';
+          $measureTarget.classList.remove('ms-waiting');
+          $measureTarget.classList.add('ms-hit');
+          setTimeout(() => $measureTarget.classList.remove('ms-hit'), 120);
+        }
+      }
+    }
+    return;
+  }
+
   // MapCopy mode — block all native input
   e.preventDefault();
   e.stopPropagation();
@@ -375,6 +432,39 @@ $btnEdit.addEventListener('click', () => {
   $btnEdit.classList.toggle('active', !nowHidden);
   $btnEdit.textContent = nowHidden ? 'edit layout' : 'close editor';
   if (!nowHidden) layoutEditor.render();
+});
+
+document.getElementById('btn-measure-toggle').addEventListener('click', () => {
+  const nowHidden = $measureSec.classList.toggle('hidden');
+  document.getElementById('btn-measure-toggle').classList.toggle('active', !nowHidden);
+  document.getElementById('btn-measure-toggle').textContent = nowHidden ? 'measure' : 'close measure';
+});
+
+$btnMeasure.addEventListener('click', () => {
+  if (!measuring) {
+    measuring = true;
+    $btnMeasure.textContent = 'stop session';
+    $btnMeasure.classList.add('active');
+    $measureExport.classList.add('hidden');
+    $measureProg.textContent = '0 / 144 pairs';
+    measurement.start();
+    $field.focus();
+  } else {
+    measuring = false;
+    measurement.stop();
+    $btnMeasure.textContent = 'start session';
+    $btnMeasure.classList.remove('active');
+    $measureProg.textContent = 'stopped';
+  }
+});
+
+$measureExport.addEventListener('click', () => {
+  const blob = new Blob([measurement.export()], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mapcopy_session.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
 });
 
 $btnRestart.addEventListener('click', startTest);
