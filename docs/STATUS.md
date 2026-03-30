@@ -18,15 +18,13 @@
 
 - [x] v0.0.1 — engine, layout, 167/167 tests, CI, site live
 - [x] v0.0.2 — typing test, open mode, textarea output, token dispatch, regular/test toggles
-- [x] v0.0.3 — layout editor, localStorage persistence, JSON import/export, reset to default
+- [x] v0.0.3 — layout editor (dblclick to edit, Enter to commit), localStorage, JSON import/export, reset to default
 
 ---
 
 ## What Is Not Done
 
-- [x] `src/ui/LayoutEditor.js` — visual key remapping UI
-- [x] localStorage persistence
-- [x] JSON import / export
+- [ ] Deploy v0.0.3 — action required
 - [ ] `ö` trigger — non-Nordic keyboard remapping (open)
 - [ ] Measurement session / optimiser (VISION.md)
 

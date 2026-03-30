@@ -56,7 +56,7 @@ export class LayoutEditor {
     bar.className = 'le-toolbar';
     const hint = document.createElement('span');
     hint.className   = 'le-hint';
-    hint.textContent = 'double-click a cell to edit · click anywhere to cancel';
+    hint.textContent = 'double-click to edit · Enter to commit · Escape or click away to cancel';
     bar.appendChild(hint);
 
     const resetBtn = this._btn('reset to default', () => {
