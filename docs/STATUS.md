@@ -8,7 +8,7 @@
 
 **Phase: v0.0.2 — Phase 2 built, ready to deploy**
 **Repo:  https://github.com/AngryWatership/MapCopy**
-**Tag:   v0.0.1**
+**Tag:   v0.0.1 (v0.0.2 pending deploy)**
 **Local: /mnt/c/Users/PC MAROC/projects/MapCopy (WSL)**
 **Live:  https://angrywatership.github.io/MapCopy**
 
@@ -32,7 +32,7 @@
 
 ---
 
-## What Is Not Done
+## What Is Done (Phase 2 additions)
 
 - [x] `words/en-200.json` — 200-word list
 - [x] `src/ui/TypingArea.js` — char-level diff renderer
@@ -40,7 +40,13 @@
 - [x] `src/ui/StatsBar.js` — live HUD
 - [x] Results screen (WPM, accuracy, chars, time)
 - [x] `index.html` + `app.js` + `style.css` updated for Phase 2
+
+## What Is Not Done
+
+- [ ] Phase 2 not yet deployed (run `mapcopy_git.sh`)
 - [ ] `ö` trigger — remap for non-Nordic keyboards (open question)
+- [ ] Layout editor / remapping UI (Phase 3)
+- [ ] Measurement session / optimiser (VISION.md)
 
 ---
 
@@ -52,7 +58,7 @@ Run `mapcopy_git.sh`, then:
 ```bash
 cd "/mnt/c/Users/PC MAROC/projects/MapCopy"
 git push origin main
-git tag v0.0.2
+git tag -a v0.0.2 -m "Phase 2: typing test mode — TypingArea, Stats, StatsBar, results screen"
 git push origin v0.0.2
 ```
 
@@ -69,4 +75,4 @@ git push origin v0.0.2
 
 ---
 
-*Last updated: session 1 — site live, Phase 2 starting*
+*Last updated: session 1 — Phase 2 built, awaiting deploy*
