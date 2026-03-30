@@ -27,6 +27,7 @@ export class LayoutEditor {
     this._onChange = onChange;
     this._editing   = null;  // { keyIdx, charIdx }
     this._rendering = false;  // mutex — blocks blur commits during re-render
+    this._editId    = 0;        // increments each startEdit — stale blurs check this
   }
 
   // ── Public API ─────────────────────────────────────────────────────────
@@ -157,7 +158,8 @@ export class LayoutEditor {
   // ── Inline edit ────────────────────────────────────────────────────────
 
   _startEdit(cell, ki, ci) {
-    // Cancel any existing edit
+    this._editId++;
+    const myId = this._editId;
     this._cancelEdit();
 
     this._editing = { ki, ci };
@@ -198,9 +200,8 @@ export class LayoutEditor {
     });
 
     input.addEventListener('blur', () => {
-      // Mutex: if a render is in progress (triggered by another cell click),
-      // this blur is a side-effect of that render — skip it entirely.
-      if (this._rendering) return;
+      // Only commit if this is still the active edit session
+      if (this._rendering || this._editId !== myId) return;
       commit();
     });
   }
