@@ -4,7 +4,23 @@
 
 ---
 
-## v0.0.2 — Phase 2: typing test
+## v0.0.2 — Phase 2 final
+
+- `src/ui/TypingArea.js` — clean rewrite: push/pop API, 75ms green flash, no token or output field knowledge
+- `src/ui/Stats.js` — WPM rolling window + accuracy
+- `src/ui/StatsBar.js` — live HUD at 250ms interval
+- `src/app.js` — full rewrite with clear separation: textarea helpers, token dispatch, prompt feed, modes
+- `index.html` — textarea replaces output div; test, results, stats sections
+- `style.css` — textarea styles, tc-flash class
+- Token dispatch: SP/TAB/ENT insert text; BS/DEL/ESC/nav manipulate textarea cursor directly
+- MapCopy mode: all native textarea input blocked via preventDefault on $field keydown
+- Regular mode: full native textarea, stats counted in open mode
+- Test/open toggle: word prompt vs free writing, both feed WPM
+- Training/type toggle: keyboard display only, no feature isolation
+- mapcopy_git.sh: updated lookup table covers all Phase 2 files
+
+---
+
 
 - `words/en-200.json` — 200 common English words
 - `src/ui/Stats.js` — WPM (rolling 10s window) + accuracy tracking

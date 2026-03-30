@@ -130,4 +130,22 @@
 
 ---
 
-*Format: add new decisions below D-014*
+## D-015 — Output field is a native textarea
+
+**Decided:** Session 1 end
+**Decision:** The output area is a `<textarea>` driven programmatically in MapCopy mode, natively in regular mode.
+**Reason:** All cursor movement, selection, scrolling, and editing behaviour comes free. Custom div-based output required reimplementing browser primitives badly.
+**Rejected:** Custom div with span-based output (fragile, required reimplementing backspace/cursor/nav logic).
+
+---
+
+## D-016 — TypingArea owns prompt only, app.js owns dispatch
+
+**Decided:** Session 1 end
+**Decision:** `TypingArea.push(char)` / `.pop()` receives single printable chars only. All token handling, textarea writes, and routing live in `app.js`.
+**Reason:** Previous versions had TypingArea trying to operate on the output field — wrong layer. Clean separation stopped the patching cycle.
+**Rejected:** TypingArea handling special tokens (caused circular responsibility and repeated regressions).
+
+---
+
+*Format: add new decisions below D-016*

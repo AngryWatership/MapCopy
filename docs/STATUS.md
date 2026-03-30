@@ -6,9 +6,9 @@
 
 ## Current State
 
-**Phase: v0.0.2 — Phase 2 built, ready to deploy**
+**Phase: v0.0.2 built — ready to deploy**
 **Repo:  https://github.com/AngryWatership/MapCopy**
-**Tag:   v0.0.1 (v0.0.2 pending deploy)**
+**Tag:   v0.0.1 (v0.0.2 pending)**
 **Local: /mnt/c/Users/PC MAROC/projects/MapCopy (WSL)**
 **Live:  https://angrywatership.github.io/MapCopy**
 
@@ -16,49 +16,40 @@
 
 ## What Is Done
 
-- [x] Algorithm specified, sign bug corrected, formula verified
-- [x] 144-slot zero-duplicate layout — all printable ASCII + specials + F-keys + shortcuts
-- [x] `docs/mapcopy_layout.py` + `docs/layout.json` — canonical source + generated output
-- [x] `src/engine/KeyEngine.js` — pure state machine, no DOM
-- [x] `src/engine/Layout.js` — loader + duplicate validator
-- [x] `src/app.js` — bootstrap, training view, mature view, physical keyboard wiring
-- [x] `index.html` + `style.css` — shell
-- [x] `tests/KeyEngine.test.js` — 167/167 passing
-- [x] `.github/workflows/deploy.yml` — test → deploy pipeline
-- [x] `mapcopy_git.sh` — zip deploy script, filename-based lookup table
-- [x] All seven `docs/` md files current
-- [x] Site live at https://angrywatership.github.io/MapCopy
-- [x] v0.0.1 tagged and pushed
+- [x] Engine, layout, 167/167 tests, CI pipeline
+- [x] Site live at v0.0.1
+- [x] `words/en-200.json` — 200-word list
+- [x] `src/ui/Stats.js` — WPM + accuracy
+- [x] `src/ui/StatsBar.js` — live HUD
+- [x] `src/ui/TypingArea.js` — word prompt, push/pop API, 75ms green flash
+- [x] `src/app.js` — clean rewrite: textarea I/O, token dispatch, modes
+- [x] `index.html` — textarea output field, test/results/stats sections
+- [x] `style.css` — textarea styles, typing char classes, tc-flash
+- [x] MapCopy mode — engine drives textarea, all native input blocked
+- [x] Regular mode — full native textarea, stats tracked in open mode
+- [x] Test mode — word prompt active, WPM vs target
+- [x] Open mode — free writing, WPM tracked, results on restart
+- [x] Special tokens (SP, TAB, ENT, BS, DEL, ESC, nav) → real textarea effects
+- [x] Training / type view toggle — keyboard display only, all features available in both
 
 ---
 
-## What Is Done (Phase 2 additions)
-
-- [x] `words/en-200.json` — 200-word list
-- [x] `src/ui/TypingArea.js` — char-level diff renderer
-- [x] `src/ui/Stats.js` — WPM (rolling window) + accuracy
-- [x] `src/ui/StatsBar.js` — live HUD
-- [x] Results screen (WPM, accuracy, chars, time)
-- [x] `index.html` + `app.js` + `style.css` updated for Phase 2
-
 ## What Is Not Done
 
-- [ ] Phase 2 not yet deployed (run `mapcopy_git.sh`)
-- [ ] `ö` trigger — remap for non-Nordic keyboards (open question)
+- [ ] Deploy v0.0.2 — **action required (see below)**
+- [ ] `ö` trigger — non-Nordic keyboard remapping (open)
 - [ ] Layout editor / remapping UI (Phase 3)
 - [ ] Measurement session / optimiser (VISION.md)
 
 ---
 
-## Next Step
-
-**Deploy Phase 2, then tag v0.0.2.**
+## Next Step — Action Required From You
 
 Run `mapcopy_git.sh`, then:
 ```bash
 cd "/mnt/c/Users/PC MAROC/projects/MapCopy"
 git push origin main
-git tag -a v0.0.2 -m "Phase 2: typing test mode — TypingArea, Stats, StatsBar, results screen"
+git tag -a v0.0.2 -m "Phase 2: typing test, open mode, textarea output, token dispatch"
 git push origin v0.0.2
 ```
 
@@ -69,10 +60,9 @@ git push origin v0.0.2
 | # | Question | Status |
 |---|---|---|
 | 1 | `ö` key — remap for non-Nordic keyboards? | Open |
-| 2 | Cross-row second key — commits first at idx 0, second becomes pending | Confirmed |
-| 3 | `^C` etc. — fire OS shortcut or output token string? | Open |
-| 4 | Word list language — English only for v1? | Open |
+| 2 | `^C` etc. — fire OS shortcut or output token string? | Open |
+| 3 | Word list language — English only for v1? | Open |
 
 ---
 
-*Last updated: session 1 — Phase 2 built, awaiting deploy*
+*Last updated: session 1 end — v0.0.2 ready to deploy*
